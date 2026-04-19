@@ -3,29 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Приватный чат</title>
+    <title>Private DM Chat</title>
     <style>
-        body { font-family: 'Inter', sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        .chat-container { width: 100%; max-width: 450px; background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-        .header { background: #007bff; color: white; padding: 15px; text-align: center; font-weight: bold; }
-        #chatBox { height: 400px; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; background: #fafafa; }
-        .msg { max-width: 80% ; padding: 10px 15px; border-radius: 18px; font-size: 14px; line-height: 1.4; position: relative; }
-        .sent { align-self: flex-end; background: #007bff; color: white; border-bottom-right-radius: 4px; }
-        .received { align-self: flex-start; background: #e9ecef; color: #333; border-bottom-left-radius: 4px; }
-        .input-area { display: flex; padding: 15px; border-top: 1px solid #eee; background: white; }
-        input { flex: 1; border: 1px solid #ddd; padding: 10px; border-radius: 20px; outline: none; }
-        button { background: #007bff; color: white; border: none; width: 40px; height: 40px; border-radius: 50%; margin-left: 10px; cursor: pointer; }
-        .time { font-size: 10px; opacity: 0.7; display: block; margin-top: 5px; text-align: right; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; display: flex; justify-content: center; padding: 20px; }
+        .chat-card { width: 400px; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow: hidden; }
+        .chat-header { background: #0084ff; color: white; padding: 15px; text-align: center; font-weight: bold; }
+        #chatBox { height: 350px; overflow-y: auto; padding: 15px; background: #ffffff; display: flex; flex-direction: column; gap: 8px; }
+        .message { padding: 8px 12px; border-radius: 15px; font-size: 14px; max-width: 75%; position: relative; }
+        .my-msg { align-self: flex-end; background: #0084ff; color: white; border-bottom-right-radius: 2px; }
+        .their-msg { align-self: flex-start; background: #e4e6eb; color: black; border-bottom-left-radius: 2px; }
+        .input-box { display: flex; border-top: 1px solid #eee; padding: 10px; }
+        input { flex: 1; border: 1px solid #ddd; padding: 8px 15px; border-radius: 20px; outline: none; }
+        button { background: #0084ff; color: white; border: none; padding: 0 15px; margin-left: 5px; border-radius: 20px; cursor: pointer; }
+        .time { font-size: 10px; opacity: 0.6; display: block; margin-top: 4px; }
     </style>
 </head>
 <body>
 
-<div class="chat-container">
-    <div class="header">Чат: Дүйсенбек Алмас ↔ Алмас</div>
+<div class="chat-card">
+    <div class="chat-header">Чат с: Алмас</div>
     <div id="chatBox"></div>
-    <div class="input-area">
-        <input type="text" id="messageInput" placeholder="Ваше сообщение...">
-        <button id="sendBtn">➤</button>
+    <div class="input-box">
+        <input type="text" id="msgInput" placeholder="Напишите сообщение...">
+        <button id="sendBtn">Отправить</button>
     </div>
 </div>
 
@@ -34,62 +34,58 @@
     import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } 
     from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-    // ИСПОЛЬЗУЕМ ТВОИ ДАННЫЕ ИЗ СКРИНШОТОВ И СООБЩЕНИЙ
+    // ТВОЙ ОБНОВЛЕННЫЙ КОНФИГ
     const firebaseConfig = {
-        apiKey: "AIzaSyDgBxd0Txafc_gA-rpd5zKn3326SIfxsHU", // из
-        authDomain: "quasap-a072e.firebaseapp.com",
-        projectId: "quasap-a072e",
-        storageBucket: "quasap-a072e.firebasestorage.app",
-        messagingSenderId: "470254888898",
-        appId: "1:306369715709:web:ab603b33863c22f3f0cd94" // Твой последний ID
+        apiKey: "AIzaSyAKibxugN1qyaPGLBKRAoVATh3R5p8f3vY",
+        authDomain: "mape-7eaf1.firebaseapp.com",
+        projectId: "mape-7eaf1",
+        storageBucket: "mape-7eaf1.firebasestorage.app",
+        messagingSenderId: "306369715709",
+        appId: "1:306369715709:web:ab603b33863c22f3f0cd94",
+        measurementId: "G-ESB1P7F11C"
     };
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // Данные пользователей для DM
-    const MY_NAME = "Дүйсенбек Алмас";
-    const TARGET_NAME = "Алмас";
+    const SENDER = "Дүйсенбек Алмас";
+    const RECEIVER = "Алмас";
 
-    // ОТПРАВКА
+    // 1. ФУНКЦИЯ ОТПРАВКИ
     document.getElementById('sendBtn').onclick = async () => {
-        const input = document.getElementById('messageInput');
+        const input = document.getElementById('msgInput');
         if (!input.value.trim()) return;
 
-        try {
-            await addDoc(collection(db, "direct_messages"), {
-                from: MY_NAME,
-                to: TARGET_NAME,
-                text: input.value,
-                timestamp: serverTimestamp()
-            });
-            input.value = "";
-        } catch (e) { alert("Ошибка: " + e.message); }
+        await addDoc(collection(db, "messages"), {
+            from: SENDER,
+            to: RECEIVER,
+            text: input.value,
+            timestamp: serverTimestamp()
+        });
+        input.value = "";
     };
 
-    // ЧТЕНИЕ (REAL-TIME)
-    const q = query(collection(db, "direct_messages"), orderBy("timestamp", "asc"));
+    // 2. ФУНКЦИЯ ПОЛУЧЕНИЯ (REAL-TIME)
+    const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
     onSnapshot(q, (snapshot) => {
         const chatBox = document.getElementById('chatBox');
         chatBox.innerHTML = "";
         snapshot.forEach((doc) => {
-            const data = doc.data();
-            // Фильтр: показываем только сообщения между мной и собеседником
-            if ((data.from === MY_NAME && data.to === TARGET_NAME) || 
-                (data.from === TARGET_NAME && data.to === MY_NAME)) {
-                
-                const isMine = data.from === MY_NAME;
-                const time = data.timestamp?.toDate().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) || '...';
+            const m = doc.data();
+            // Фильтруем сообщения только для этой пары пользователей
+            if ((m.from === SENDER && m.to === RECEIVER) || (m.from === RECEIVER && m.to === SENDER)) {
+                const isMine = m.from === SENDER;
+                const time = m.timestamp?.toDate().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) || '';
                 
                 chatBox.innerHTML += `
-                    <div class="msg ${isMine ? 'sent' : 'received'}">
-                        ${data.text}
+                    <div class="message ${isMine ? 'my-msg' : 'their-msg'}">
+                        ${m.text}
                         <span class="time">${time}</span>
                     </div>
                 `;
             }
         });
-        chatBox.scrollTop = chatBox.scrollHeight; // Автопрокрутка вниз
+        chatBox.scrollTop = chatBox.scrollHeight;
     });
 </script>
 </body>
