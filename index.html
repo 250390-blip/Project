@@ -2,18 +2,18 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Realtime Chat Firebase</title>
+  <title>Task Manager</title>
 </head>
 <body>
 
-<h2>💬 Реактивный чат</h2>
+<h2>📋 Список задач</h2>
 
-<input id="msg" placeholder="Введите сообщение">
-<button onclick="sendMessage()">Отправить</button>
+<input id="task" placeholder="Новая задача">
+<button onclick="addTask()">Добавить</button>
 
 <hr>
 
-<div id="chat"></div>
+<div id="list"></div>
 
 <script type="module">
 
@@ -25,11 +25,12 @@ import {
   onSnapshot,
   query,
   orderBy,
-  serverTimestamp
+  doc,
+  updateDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 
-// 🔑 ТВОЯ КОНФИГУРАЦИЯ
+// 🔑 ТВОЙ CONFIG
 const firebaseConfig = {
   apiKey: "AIzaSyAKibxugN1qyaPGLBKRAoVATh3R5p8f3vY",
   authDomain: "mape-7eaf1.firebaseapp.com",
@@ -43,41 +44,55 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const colRef = collection(db, "messages");
+const colRef = collection(db, "tasks");
 
 
-// ======================
-// 1 ФУНКЦИЯ: отправка
-// ======================
-window.sendMessage = async function () {
-  const msg = document.getElementById("msg").value;
+// ================== 1 ФУНКЦИЯ: ДОБАВЛЕНИЕ ==================
+window.addTask = async function () {
+  const text = document.getElementById("task").value;
 
-  if (!msg) return;
+  if (!text) return;
 
   await addDoc(colRef, {
-    text: msg,
-    time: serverTimestamp()
+    text: text,
+    done: false
   });
 
-  document.getElementById("msg").value = "";
+  document.getElementById("task").value = "";
 };
 
 
-// ======================
-// 2 ФУНКЦИЯ: real-time чат
-// ======================
-const q = query(colRef, orderBy("time", "desc"));
+// ================== REAL-TIME ОТОБРАЖЕНИЕ ==================
+const q = query(colRef, orderBy("text"));
 
 onSnapshot(q, (snapshot) => {
   let html = "";
 
-  snapshot.forEach(doc => {
-    const data = doc.data();
-    html += `<p>💬 ${data.text}</p>`;
+  snapshot.forEach(docItem => {
+    const data = docItem.data();
+
+    html += `
+      <p>
+        ${data.done ? "✅" : "⬜"} ${data.text}
+        <button onclick="toggleTask('${docItem.id}', ${data.done})">
+          Изменить
+        </button>
+      </p>
+    `;
   });
 
-  document.getElementById("chat").innerHTML = html;
+  document.getElementById("list").innerHTML = html;
 });
+
+
+// ================== 2 ФУНКЦИЯ: ИЗМЕНЕНИЕ СТАТУСА ==================
+window.toggleTask = async function (id, current) {
+  const ref = doc(db, "tasks", id);
+
+  await updateDoc(ref, {
+    done: !current
+  });
+};
 
 </script>
 
