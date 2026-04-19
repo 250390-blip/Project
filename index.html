@@ -3,19 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Облачное приложение</title>
+    <title>Mape-7eaf1 Social System</title>
     <style>
         body { font-family: 'Inter', sans-serif; background: #f4f7f6; display: flex; flex-direction: column; align-items: center; padding: 30px; }
         .container { width: 100%; max-width: 500px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
 
-        /* Блок авторизации */
-        .auth-bar { background: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; display: flex; align-items: center; gap: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        /* Блок профиля */
+        .auth-bar { background: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; display: flex; align-items: center; gap: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); width: 100%; max-width: 470px; }
         .user-avatar { width: 40px; height: 40px; border-radius: 50%; border: 2px solid #007bff; }
 
         input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
         button { background: #007bff; color: white; border: none; padding: 12px; border-radius: 8px; width: 100%; font-weight: 600; cursor: pointer; transition: 0.3s; }
         button:hover { background: #0056b3; }
-        .logout-btn { background: #ff4d4d; padding: 8px 15px; width: auto; font-size: 14px; }
+        .logout-btn { background: #ff4d4d; padding: 8px 15px; width: auto; font-size: 14px; margin-left: auto; }
 
         /* Стили постов */
         .post { background: #fff; border: 1px solid #eaeaea; padding: 15px; margin-top: 15px; border-radius: 8px; width: 100%; max-width: 500px; text-align: left; }
@@ -32,7 +32,7 @@
         
         <div id="userInfo" style="display: none;" class="auth-bar">
             <img id="userPhoto" class="user-avatar" src="" alt="Avatar">
-            <span id="userName" style="font-weight: bold;">Имя</span>
+            <span id="userName" style="font-weight: bold;">Загрузка...</span>
             <button id="logoutBtn" class="logout-btn">Выйти</button>
         </div>
     </div>
@@ -54,15 +54,15 @@
         import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } 
         from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 
-        // ТВОЙ КОНФИГ ИЗ СКРИНШОТА
+        // ТВОИ ДАННЫЕ ПРОЕКТА MAPE-7EAF1
         const firebaseConfig = {
-            apiKey: "AIzaSyDgU6zDUTxaFc_qR-rpdSzEnU3265IfxuU",
-            authDomain: "qazaq-a972e.firebaseapp.com",
-            projectId: "qazaq-a972e",
-            storageBucket: "qazaq-a972e.firebasestorage.app",
-            messagingSenderId: "470254080890",
-            appId: "1:470254080890:web:3dd7ff209bc0c149f33a23",
-            measurementId: "G-9TE57W6PB7"
+            apiKey: "AIzaSyAKibxugN1qyaPGLBKRAoVATh3R5p8f3vY",
+            authDomain: "mape-7eaf1.firebaseapp.com",
+            projectId: "mape-7eaf1",
+            storageBucket: "mape-7eaf1.firebasestorage.app",
+            messagingSenderId: "306369715709",
+            appId: "1:306369715709:web:ab603b33863c22f3f0cd94",
+            measurementId: "G-ESB1P7F11C"
         };
 
         const app = initializeApp(firebaseConfig);
@@ -70,14 +70,22 @@
         const auth = getAuth(app);
         const provider = new GoogleAuthProvider();
 
-        // Элементы интерфейса
+        // Элементы
         const loginBtn = document.getElementById('loginBtn');
         const logoutBtn = document.getElementById('logoutBtn');
         const userInfo = document.getElementById('userInfo');
         const messageForm = document.getElementById('messageForm');
 
-        // --- ЛОГИКА АВТОРИЗАЦИИ ---
-        loginBtn.onclick = () => signInWithPopup(auth, provider).catch(err => console.error(err));
+        // --- ЛОГИКА ВХОДА ---
+        loginBtn.onclick = async () => {
+            try {
+                await signInWithPopup(auth, provider);
+            } catch (err) {
+                console.error("Ошибка входа:", err);
+                alert("Не удалось войти. Проверь консоль (F12)");
+            }
+        };
+
         logoutBtn.onclick = () => signOut(auth);
 
         onAuthStateChanged(auth, (user) => {
@@ -97,23 +105,22 @@
             }
         });
 
-        // --- ЛОГИКА РАБОТЫ С ДАННЫМИ ---
+        // --- РАБОТА С БАЗОЙ ---
 
-        // Функция лайка
+        // Лайки
         window.processLike = async (postId) => {
+            if (!auth.currentUser) return alert("Войдите, чтобы лайкать!");
             try {
                 await updateDoc(doc(db, "requests", postId), {
                     likes: increment(1)
                 });
-            } catch (e) {
-                alert("Ошибка! Нужно войти в аккаунт, чтобы лайкать.");
-            }
+            } catch (e) { console.error(e); }
         };
 
-        // Отправка поста
+        // Отправка
         document.getElementById('mainBtn').onclick = async () => {
             const content = document.getElementById('content').value;
-            if (!content.trim()) return alert("Введите текст сообщения!");
+            if (!content.trim()) return alert("Напишите что-нибудь!");
 
             try {
                 await addDoc(collection(db, "requests"), {
@@ -126,11 +133,12 @@
                 });
                 document.getElementById('content').value = "";
             } catch (e) {
-                alert("Ошибка безопасности! Проверьте правила (Rules).");
+                alert("Ошибка! Проверь правила (Rules) в Firebase.");
+                console.error(e);
             }
         };
 
-        // Чтение ленты (Real-time)
+        // Лента (Real-time)
         const q = query(collection(db, "requests"), orderBy("timestamp", "desc"));
         onSnapshot(q, (snapshot) => {
             const feed = document.getElementById('feed');
@@ -143,7 +151,7 @@
                         <div class="post-header">
                             <img src="${data.photo || 'https://via.placeholder.com/30'}" class="post-avatar">
                             <b>${data.name}</b>
-                            <span class="time">${data.timestamp?.toDate().toLocaleTimeString() || '...'}</span>
+                            <span class="time">${data.timestamp?.toDate().toLocaleString() || '...'}</span>
                         </div>
                         <p>${data.text}</p>
                         <button class="like-btn" onclick="processLike('${doc.id}')">❤️ ${data.likes || 0}</button>
@@ -151,8 +159,6 @@
                 `;
             });
         });
-
-        window.db = db; // Для тестов в консоли
     </script>
 </body>
 </html>
