@@ -1,1 +1,53 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Firebase App</title>
+</head>
+<body>
 
+  <h2>Форма заявки</h2>
+
+  <input type="text" id="name" placeholder="Имя"><br><br>
+  <input type="email" id="email" placeholder="Email"><br><br>
+  <button onclick="sendData()">Отправить</button>
+
+  <p id="status"></p>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    // 🔥 ВСТАВЬ СВОИ ДАННЫЕ ИЗ FIREBASE
+ const firebaseConfig = {
+  apiKey: "AIzaSyAKibxugN1qyaPGLBKRAoVATh3R5p8f3vY",
+  authDomain: "mape-7eaf1.firebaseapp.com",
+  projectId: "mape-7eaf1",
+  storageBucket: "mape-7eaf1.firebasestorage.app",
+  messagingSenderId: "306369715709",
+  appId: "1:306369715709:web:ab603b33863c22f3f0cd94",
+  measurementId: "G-ESB1P7F11C"
+};
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    window.sendData = async function () {
+      const name = document.getElementById("name").value;
+      const email = document.getElementById("email").value;
+
+      try {
+        await addDoc(collection(db, "requests"), {
+          name: name,
+          email: email
+        });
+
+        document.getElementById("status").innerText = "✅ Данные отправлены!";
+      } catch (e) {
+        document.getElementById("status").innerText = "❌ Ошибка!";
+        console.error(e);
+      }
+    }
+  </script>
+
+</body>
+</html>
