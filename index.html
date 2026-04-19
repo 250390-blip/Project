@@ -1,101 +1,91 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <title>Realtime Firebase App</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BaaS</title>
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #f4f7f6; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .container { width: 100%; max-width: 500px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        button#mainBtn { background: #007bff; color: white; border: none; padding: 12px; width: 100%; font-weight: 600; cursor: pointer; transition: 0.3s; }
+        button#mainBtn:hover { background: #0056b3; }
+        .post { background: #fff; border: 1px solid #eeeeee; padding: 15px; margin-top: 15px; border-radius: 8px; width: 100%; max-width: 500px; position: relative; }
+        .like-btn { cursor: pointer; border: none; background: #f8f9fa; padding: 5px 12px; border-radius: 20px; font-size: 14px; transition: 0.2s; }
+        .time { font-size: 11px; color: #999; float: right; }
+    </style>
 </head>
 <body>
 
-<h2>🔥 Реактивные посты</h2>
-
-<input type="text" id="text" placeholder="Введите пост">
-<button id="addBtn">Добавить</button>
-
-<hr>
-
-<div id="posts"></div>
-
+<div class="container">
+    <h1>Панель управления данными</h1>
+    <input type="text" id="name" placeholder="Имя профиля">
+    <input type="email" id="email" placeholder="Рабочий Email">
+    <button id="mainBtn">Опубликовать в облако</button>
+</div>
 <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+        import {
+            getFirestore, collection, addDoc, query, orderBy, onSnapshot,
+            serverTimestamp, updateDoc, doc, increment
+        } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-
-import {
-  getFirestore,
-  collection,
-  addDoc,
-  onSnapshot,
-  query,
-  orderBy,
-  doc,
-  updateDoc,
-  increment,
-  serverTimestamp
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-
-// 🔑 КОНФИГУРАЦИЯ (вставь свою из Firebase)
-const firebaseConfig = {
- apiKey: "AIzaSyAKibxugN1qyaPGLBKRAoVATh3R5p8f3vY",
+        // КОНФИГУРАЦИЯ
+        const firebaseConfig = {
+           apiKey: "AIzaSyAKibxugN1qyaPGLBKRAoVATh3R5p8f3vY",
   authDomain: "mape-7eaf1.firebaseapp.com",
   projectId: "mape-7eaf1",
+  storageBucket: "mape-7eaf1.firebasestorage.app",
+  messagingSenderId: "306369715709",
   appId: "1:306369715709:web:ab603b33863c22f3f0cd94",
+  measurementId: "G-ESB1P7F11C"
 };
 
-// 🔗 Инициализация
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
 
-// ================== ДОБАВЛЕНИЕ ПОСТА ==================
-document.getElementById("addBtn").addEventListener("click", async () => {
-  const text = document.getElementById("text").value;
+        // МЕТОД: АТОМАРНОЕ ОБНОВЛЕНИЕ (LIKES)
+        window.processLike = async (id) => {
+            const docRef = doc(db, "requests", id);
+            try {
+                await updateDoc(docRef, { likes: increment(1) });
+              await updateDoc(docRef, { likes: increment(1) });
+        } catch (e) { console.error("Validation Error:", e.message); }
+    };
 
-  if (!text) return;
+    // МЕТОД: ЗАПИСЬ С ВАЛИДАЦИЕЙ
+    document.getElementById('mainBtn').onclick = async () => {
+        const btn = document.getElementById('mainBtn');
+        btn.disabled = true;
+        try {
+            await addDoc(collection(db, "requests"), {
+                name: document.getElementById('name').value,
+                email: document.getElementById('email').value,
+                likes: 0,
+                timestamp: serverTimestamp()
+            });
+            document.getElementById('email').value = "";
+        } catch (e) { alert("Ошибка безопасности: Данные отклонены сервером."); }
+        btn.disabled = false;
+    };
 
-  await addDoc(collection(db, "posts"), {
-    text: text,
-    likes: 0,
-    timestamp: serverTimestamp()
-  });
-
-  document.getElementById("text").value = "";
-});
-
-
-// ================== REAL-TIME СИНХРОНИЗАЦИЯ ==================
-const q = query(collection(db, "posts"), orderBy("timestamp", "desc"));
-
-onSnapshot(q, (snapshot) => {
-  const container = document.getElementById("posts");
-  container.innerHTML = "";
-
-  snapshot.forEach((docItem) => {
-    const data = docItem.data();
-
-    const div = document.createElement("div");
-
-    div.innerHTML = `
-      <p>${data.text}</p>
-      <button onclick="likePost('${docItem.id}')">
-        ❤️ ${data.likes || 0}
-      </button>
-      <hr>
-    `;
-
-    container.appendChild(div);
-  });
-});
-
-
-// ================== АТОМАРНЫЙ ЛАЙК ==================
-window.likePost = async function (id) {
-  const ref = doc(db, "posts", id);
-
-  await updateDoc(ref, {
-    likes: increment(1)
-  });
-};
-
+    // МЕТОД: REAL-TIME СИНХРОНИЗАЦИЯ
+    const q = query(collection(db, "requests"), orderBy("timestamp", "desc"));
+    onSnapshot(q, (snapshot) => {
+        const feed = document.getElementById('feed');
+        feed.innerHTML = "";
+        snapshot.forEach((doc) => {
+            const data = doc.data();
+            feed.innerHTML += `
+                <div class="post">
+                    <span class="time">${data.timestamp?.toDate().toLocaleTimeString() || '...'}</span>
+                    <b>${data.name}</b>
+                    <p style="margin: 5px 0;">${data.email}</p>
+                    <button class="like-btn" onclick="processLike('${doc.id}')"> 🔥 ${data.likes || 0}</button>
+                </div>
+            `;
+        });
+    });
 </script>
-
 </body>
 </html>
