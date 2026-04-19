@@ -1,100 +1,54 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <title>Tasks Firebase FIX</title>
-</head>
-<body>
+import { 
+    getFirestore, collection, addDoc, query, where, orderBy, onSnapshot, serverTimestamp 
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-<h2>📋 Задачи</h2>
+// Текущий пользователь (в реальности берется из Auth)
+const currentUser = "Дүйсенбек Алмас"; 
+const selectedChat = "Алмас"; // Собеседник из интерфейса
 
-<input id="task" placeholder="Новая задача">
-<button onclick="addTask()">Добавить</button>
+// ФУНКЦИЯ: Отправка личного сообщения
+window.sendPrivateMessage = async () => {
+    const text = document.getElementById('messageInput').value;
+    if (!text) return;
 
-<hr>
-
-<div id="list"></div>
-
-<script type="module">
-
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import {
-  getFirestore,
-  collection,
-  addDoc,
-  onSnapshot,
-  doc,
-  updateDoc
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-
-// 🔑 ТВОЙ CONFIG (оставляем как есть)
-const firebaseConfig = {
-  apiKey: "AIzaSyAKibxugN1qyaPGLBKRAoVATh3R5p8f3vY",
-  authDomain: "mape-7eaf1.firebaseapp.com",
-  projectId: "mape-7eaf1",
-  storageBucket: "mape-7eaf1.firebasestorage.app",
-  messagingSenderId: "306369715709",
-  appId: "1:306369715709:web:ab603b33863c22f3f0cd94"
+    try {
+        await addDoc(collection(db, "direct_messages"), {
+            from: currentUser,
+            to: selectedChat,
+            text: text,
+            timestamp: serverTimestamp()
+        });
+        document.getElementById('messageInput').value = "";
+    } catch (e) {
+        console.error("Ошибка отправки:", e);
+    }
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+// МЕТОД: Загрузка чата между двумя пользователями
+const loadChat = () => {
+    // Запрос сообщений, где либо я отправитель, либо я получатель
+    const q = query(
+        collection(db, "direct_messages"),
+        orderBy("timestamp", "asc")
+    );
 
-const colRef = collection(db, "tasks");
-
-
-// =================== 1 ФУНКЦИЯ ===================
-window.addTask = async function () {
-  const text = document.getElementById("task").value;
-
-  if (!text) return;
-
-  try {
-    await addDoc(colRef, {
-      text: text,
-      done: false
+    onSnapshot(q, (snapshot) => {
+        const chatBox = document.getElementById('chatBox');
+        chatBox.innerHTML = "";
+        snapshot.forEach((doc) => {
+            const m = doc.data();
+            // Фильтр на стороне клиента для простоты (в идеале — composite query в Firebase)
+            if ((m.from === currentUser && m.to === selectedChat) || 
+                (m.from === selectedChat && m.to === currentUser)) {
+                
+                const isMine = m.from === currentUser;
+                chatBox.innerHTML += `
+                    <div class="msg ${isMine ? 'sent' : 'received'}">
+                        <p>${m.text}</p>
+                        <span class="time">${m.timestamp?.toDate().toLocaleTimeString() || '...'}</span>
+                    </div>
+                `;
+            }
+        });
     });
-
-    document.getElementById("task").value = "";
-
-  } catch (e) {
-    console.log("Ошибка добавления:", e);
-  }
 };
-
-
-// =================== REALTIME ===================
-onSnapshot(colRef, (snapshot) => {
-  let html = "";
-
-  snapshot.forEach(docItem => {
-    const data = docItem.data();
-
-    html += `
-      <p>
-        ${data.done ? "✅" : "⬜"} ${data.text}
-        <button onclick="toggle('${docItem.id}', ${data.done})">
-          изменить
-        </button>
-      </p>
-    `;
-  });
-
-  document.getElementById("list").innerHTML = html;
-});
-
-
-// =================== 2 ФУНКЦИЯ ===================
-window.toggle = async function (id, current) {
-  const ref = doc(db, "tasks", id);
-
-  await updateDoc(ref, {
-    done: !current
-  });
-};
-
-</script>
-
-</body>
-</html>
