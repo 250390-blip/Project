@@ -2,70 +2,67 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Firebase Realtime App</title>
+  <title>Realtime Firebase App</title>
 </head>
 <body>
 
-<h2>Посты</h2>
+<h2>🔥 Реактивные посты</h2>
 
-<input type="text" id="text" placeholder="Введите текст">
+<input type="text" id="text" placeholder="Введите пост">
 <button id="addBtn">Добавить</button>
+
+<hr>
 
 <div id="posts"></div>
 
 <script type="module">
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 
-import { 
-  getFirestore, 
-  collection, 
-  addDoc, 
-  onSnapshot, 
-  query, 
-  orderBy, 
-  updateDoc, 
-  doc, 
-  increment, 
-  serverTimestamp 
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  onSnapshot,
+  query,
+  orderBy,
+  doc,
+  updateDoc,
+  increment,
+  serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-// ⚠️ ВСТАВЬ СВОЙ CONFIG
+
+// 🔑 КОНФИГУРАЦИЯ (вставь свою из Firebase)
 const firebaseConfig = {
-  apiKey: "ТВОЙ_API_KEY",
-  authDomain: "ТВОЙ_PROJECT.firebaseapp.com",
-  projectId: "ТВОЙ_PROJECT_ID",
+ apiKey: "AIzaSyAKibxugN1qyaPGLBKRAoVATh3R5p8f3vY",
+  authDomain: "mape-7eaf1.firebaseapp.com",
+  projectId: "mape-7eaf1",
+  appId: "1:306369715709:web:ab603b33863c22f3f0cd94",
 };
 
+// 🔗 Инициализация
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// ================== ДОБАВЛЕНИЕ ==================
+// ================== ДОБАВЛЕНИЕ ПОСТА ==================
 document.getElementById("addBtn").addEventListener("click", async () => {
-  const text = document.getElementById("text").value.trim();
+  const text = document.getElementById("text").value;
 
-  if (!text) {
-    alert("Введите текст!");
-    return;
-  }
+  if (!text) return;
 
-  try {
-    await addDoc(collection(db, "posts"), {
-      text: text,
-      likes: 0,
-      timestamp: serverTimestamp()
-    });
+  await addDoc(collection(db, "posts"), {
+    text: text,
+    likes: 0,
+    timestamp: serverTimestamp()
+  });
 
-    document.getElementById("text").value = "";
-  } catch (e) {
-    console.error("Ошибка добавления:", e);
-  }
+  document.getElementById("text").value = "";
 });
 
-// ================== REALTIME ==================
-const q = query(
-  collection(db, "posts"),
-  orderBy("timestamp", "desc")
-);
+
+// ================== REAL-TIME СИНХРОНИЗАЦИЯ ==================
+const q = query(collection(db, "posts"), orderBy("timestamp", "desc"));
 
 onSnapshot(q, (snapshot) => {
   const container = document.getElementById("posts");
@@ -78,30 +75,26 @@ onSnapshot(q, (snapshot) => {
 
     div.innerHTML = `
       <p>${data.text}</p>
-      <button data-id="${docItem.id}">
+      <button onclick="likePost('${docItem.id}')">
         ❤️ ${data.likes || 0}
       </button>
       <hr>
     `;
 
-    const btn = div.querySelector("button");
-
-    btn.addEventListener("click", async () => {
-      try {
-        const ref = doc(db, "posts", docItem.id);
-
-        await updateDoc(ref, {
-          likes: increment(1)
-        });
-
-      } catch (e) {
-        console.error("Ошибка лайка:", e);
-      }
-    });
-
     container.appendChild(div);
   });
 });
+
+
+// ================== АТОМАРНЫЙ ЛАЙК ==================
+window.likePost = async function (id) {
+  const ref = doc(db, "posts", id);
+
+  await updateDoc(ref, {
+    likes: increment(1)
+  });
+};
+
 </script>
 
 </body>
