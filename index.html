@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Firebase Realtime App</title>
+</head>
+<body>
+
+<h2>Посты</h2>
+
+<input type="text" id="text" placeholder="Введите текст">
+<button id="addBtn">Добавить</button>
+
+<div id="posts"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
+import { 
+  getFirestore, 
+  collection, 
+  addDoc, 
+  onSnapshot, 
+  query, 
+  orderBy, 
+  updateDoc, 
+  doc, 
+  increment, 
+  serverTimestamp 
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+// ⚠️ ВСТАВЬ СВОЙ CONFIG
+const firebaseConfig = {
+  apiKey: "ТВОЙ_API_KEY",
+  authDomain: "ТВОЙ_PROJECT.firebaseapp.com",
+  projectId: "ТВОЙ_PROJECT_ID",
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// ================== ДОБАВЛЕНИЕ ==================
+document.getElementById("addBtn").addEventListener("click", async () => {
+  const text = document.getElementById("text").value.trim();
+
+  if (!text) {
+    alert("Введите текст!");
+    return;
+  }
+
+  try {
+    await addDoc(collection(db, "posts"), {
+      text: text,
+      likes: 0,
+      timestamp: serverTimestamp()
+    });
+
+    document.getElementById("text").value = "";
+  } catch (e) {
+    console.error("Ошибка добавления:", e);
+  }
+});
+
+// ================== REALTIME ==================
+const q = query(
+  collection(db, "posts"),
+  orderBy("timestamp", "desc")
+);
+
+onSnapshot(q, (snapshot) => {
+  const container = document.getElementById("posts");
+  container.innerHTML = "";
+
+  snapshot.forEach((docItem) => {
+    const data = docItem.data();
+
+    const div = document.createElement("div");
+
+    div.innerHTML = `
+      <p>${data.text}</p>
+      <button data-id="${docItem.id}">
+        ❤️ ${data.likes || 0}
+      </button>
+      <hr>
+    `;
+
+    const btn = div.querySelector("button");
+
+    btn.addEventListener("click", async () => {
+      try {
+        const ref = doc(db, "posts", docItem.id);
+
+        await updateDoc(ref, {
+          likes: increment(1)
+        });
+
+      } catch (e) {
+        console.error("Ошибка лайка:", e);
+      }
+    });
+
+    container.appendChild(div);
+  });
+});
+</script>
+
+</body>
+</html>
