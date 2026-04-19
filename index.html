@@ -3,122 +3,128 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cloud DM System</title>
+    <title>Firebase BaaS - DM System</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #e9ecef; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; }
         .user-panel { background: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .chat-container { width: 100%; max-width: 400px; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 15px 35px rgba(0,0,0,0.2); }
+        .chat-container { width: 100%; max-width: 450px; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 15px 35px rgba(0,0,0,0.2); border: 1px solid #ddd; }
         .header { background: #6f42c1; color: white; padding: 15px; text-align: center; font-weight: 600; }
         #chatBox { height: 400px; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; background: #f8f9fa; }
-        .msg { max-width: 80%; padding: 10px 14px; border-radius: 15px; font-size: 14px; line-height: 1.4; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .msg { max-width: 80%; padding: 10px 14px; border-radius: 15px; font-size: 14px; line-height: 1.4; position: relative; }
         .sent { align-self: flex-end; background: #6f42c1; color: white; border-bottom-right-radius: 2px; }
         .received { align-self: flex-start; background: #ffffff; color: #333; border-bottom-left-radius: 2px; border: 1px solid #dee2e6; }
+        .controls { font-size: 10px; margin-top: 5px; cursor: pointer; opacity: 0.8; text-decoration: underline; display: flex; gap: 8px; }
         .input-area { display: flex; padding: 15px; border-top: 1px solid #eee; background: white; }
         input { flex: 1; border: 1px solid #ced4da; padding: 10px 15px; border-radius: 25px; outline: none; }
-        button { background: #6f42c1; color: white; border: none; width: 45px; height: 45px; border-radius: 50%; margin-left: 10px; cursor: pointer; transition: 0.2s; }
-        button:hover { background: #5a32a3; transform: scale(1.05); }
-        .time { font-size: 10px; opacity: 0.7; display: block; margin-top: 5px; text-align: right; }
+        button { background: #6f42c1; color: white; border: none; width: 45px; height: 45px; border-radius: 50%; margin-left: 10px; cursor: pointer; }
+        .time { font-size: 10px; opacity: 0.7; display: block; margin-top: 5px; }
     </style>
 </head>
 <body>
 
 <div class="user-panel">
-    <label>Выберите ваш профиль: </label>
-    <select id="userSelect" style="padding: 5px; border-radius: 5px;">
+    <label>Войти как: </label>
+    <select id="userSelect">
         <option value="Арман">Арман</option>
         <option value="Мария">Мария</option>
     </select>
 </div>
 
 <div class="chat-container">
-    <div class="header" id="chatTitle">Чат: Арман ↔ Мария</div>
+    <div class="header">Личные сообщения (BaaS)</div>
     <div id="chatBox"></div>
     <div class="input-area">
-        <input type="text" id="msgInput" placeholder="Напишите сообщение...">
+        <input type="text" id="msgInput" placeholder="Введите сообщение...">
         <button id="sendBtn">➤</button>
     </div>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } 
-    from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+    import { 
+        getFirestore, collection, addDoc, query, orderBy, onSnapshot, 
+        serverTimestamp, doc, deleteDoc, updateDoc 
+    } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-    console.log("--- СИСТЕМА ЧАТА ЗАПУЩЕНА (ИМЕНА ОБНОВЛЕНЫ) ---");
-
+    // ТВОЙ КОНФИГ
     const firebaseConfig = {
         apiKey: "AIzaSyAKibxugN1qyaPGLBKRAoVATh3R5p8f3vY",
         authDomain: "mape-7eaf1.firebaseapp.com",
         projectId: "mape-7eaf1",
         storageBucket: "mape-7eaf1.firebasestorage.app",
         messagingSenderId: "306369715709",
-        appId: "1:306369715709:web:ab603b33863c22f3f0cd94",
-        measurementId: "G-ESB1P7F11C"
+        appId: "1:306369715709:web:ab603b33863c22f3f0cd94"
     };
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    const sendBtn = document.getElementById('sendBtn');
-    const msgInput = document.getElementById('msgInput');
-    const userSelect = document.getElementById('userSelect');
-
-    // Отправка
-    sendBtn.onclick = async () => {
-        const currentUser = userSelect.value;
-        const targetUser = (currentUser === "Арман") ? "Мария" : "Арман";
-        const text = msgInput.value.trim();
-
-        if (!text) return;
-
-        try {
-            await addDoc(collection(db, "private_chats"), {
-                from: currentUser,
-                to: targetUser,
-                text: text,
-                timestamp: serverTimestamp()
-            });
-            msgInput.value = "";
-        } catch (e) {
-            console.error("Ошибка Firebase:", e);
-            alert("Ошибка! Убедитесь, что Rules в Firebase открыты (allow read, write: if true).");
+    // ФУНКЦИЯ 1: Удаление сообщения (Удаление данных)
+    window.deleteMessage = async (id) => {
+        if (confirm("Вы уверены, что хотите удалить сообщение?")) {
+            try {
+                await deleteDoc(doc(db, "messages", id));
+            } catch (e) { console.error("Ошибка удаления:", e); }
         }
     };
 
-    // Слушатель обновлений
-    const q = query(collection(db, "private_chats"), orderBy("timestamp", "asc"));
+    // ФУНКЦИЯ 2: Редактирование сообщения (Обновление данных)
+    window.editMessage = async (id, oldText) => {
+        const newText = prompt("Отредактируйте сообщение:", oldText);
+        if (newText && newText !== oldText) {
+            try {
+                await updateDoc(doc(db, "messages", id), {
+                    text: newText,
+                    edited: true
+                });
+            } catch (e) { console.error("Ошибка редактирования:", e); }
+        }
+    };
+
+    // Отправка сообщения
+    document.getElementById('sendBtn').onclick = async () => {
+        const input = document.getElementById('msgInput');
+        const from = document.getElementById('userSelect').value;
+        const to = (from === "Арман") ? "Мария" : "Арман";
+
+        if (input.value.trim()) {
+            await addDoc(collection(db, "messages"), {
+                from: from,
+                to: to,
+                text: input.value,
+                timestamp: serverTimestamp()
+            });
+            input.value = "";
+        }
+    };
+
+    // Слушатель в реальном времени
+    const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
     onSnapshot(q, (snapshot) => {
         const chatBox = document.getElementById('chatBox');
-        const currentUser = userSelect.value;
+        const me = document.getElementById('userSelect').value;
         chatBox.innerHTML = "";
 
         snapshot.forEach((doc) => {
             const data = doc.data();
+            const isMine = data.from === me;
+            const time = data.timestamp?.toDate().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) || '...';
             
-            // Показываем сообщения только этой пары
-            const isOurDialogue = (data.from === "Арман" && data.to === "Мария") || 
-                                 (data.from === "Мария" && data.to === "Арман");
-
-            if (isOurDialogue) {
-                const isMine = data.from === currentUser;
-                const time = data.timestamp?.toDate().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) || '...';
-                
-                chatBox.innerHTML += `
-                    <div class="msg ${isMine ? 'sent' : 'received'}">
-                        ${data.text}
-                        <span class="time">${time}</span>
-                    </div>
-                `;
-            }
+            chatBox.innerHTML += `
+                <div class="msg ${isMine ? 'sent' : 'received'}">
+                    <div>${data.text} ${data.edited ? '<small>(ред.)</small>' : ''}</div>
+                    <span class="time">${time}</span>
+                    ${isMine ? `
+                        <div class="controls">
+                            <span onclick="editMessage('${doc.id}', '${data.text}')">Изменить</span>
+                            <span onclick="deleteMessage('${doc.id}')">Удалить</span>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
         });
         chatBox.scrollTop = chatBox.scrollHeight;
     });
-
-    // Изменение интерфейса при переключении роли
-    userSelect.onchange = () => {
-        const user = userSelect.value;
-        document.getElementById('chatTitle').innerText = "Чат (Вы: " + user + ")";
-    };
 </script>
 </body>
 </html>
