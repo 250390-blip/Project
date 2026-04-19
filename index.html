@@ -1,54 +1,96 @@
-import { 
-    getFirestore, collection, addDoc, query, where, orderBy, onSnapshot, serverTimestamp 
-} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Приватный чат</title>
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .chat-container { width: 100%; max-width: 450px; background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .header { background: #007bff; color: white; padding: 15px; text-align: center; font-weight: bold; }
+        #chatBox { height: 400px; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; background: #fafafa; }
+        .msg { max-width: 80% ; padding: 10px 15px; border-radius: 18px; font-size: 14px; line-height: 1.4; position: relative; }
+        .sent { align-self: flex-end; background: #007bff; color: white; border-bottom-right-radius: 4px; }
+        .received { align-self: flex-start; background: #e9ecef; color: #333; border-bottom-left-radius: 4px; }
+        .input-area { display: flex; padding: 15px; border-top: 1px solid #eee; background: white; }
+        input { flex: 1; border: 1px solid #ddd; padding: 10px; border-radius: 20px; outline: none; }
+        button { background: #007bff; color: white; border: none; width: 40px; height: 40px; border-radius: 50%; margin-left: 10px; cursor: pointer; }
+        .time { font-size: 10px; opacity: 0.7; display: block; margin-top: 5px; text-align: right; }
+    </style>
+</head>
+<body>
 
-// Текущий пользователь (в реальности берется из Auth)
-const currentUser = "Дүйсенбек Алмас"; 
-const selectedChat = "Алмас"; // Собеседник из интерфейса
+<div class="chat-container">
+    <div class="header">Чат: Дүйсенбек Алмас ↔ Алмас</div>
+    <div id="chatBox"></div>
+    <div class="input-area">
+        <input type="text" id="messageInput" placeholder="Ваше сообщение...">
+        <button id="sendBtn">➤</button>
+    </div>
+</div>
 
-// ФУНКЦИЯ: Отправка личного сообщения
-window.sendPrivateMessage = async () => {
-    const text = document.getElementById('messageInput').value;
-    if (!text) return;
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } 
+    from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-    try {
-        await addDoc(collection(db, "direct_messages"), {
-            from: currentUser,
-            to: selectedChat,
-            text: text,
-            timestamp: serverTimestamp()
-        });
-        document.getElementById('messageInput').value = "";
-    } catch (e) {
-        console.error("Ошибка отправки:", e);
-    }
-};
+    // ИСПОЛЬЗУЕМ ТВОИ ДАННЫЕ ИЗ СКРИНШОТОВ И СООБЩЕНИЙ
+    const firebaseConfig = {
+        apiKey: "AIzaSyDgBxd0Txafc_gA-rpd5zKn3326SIfxsHU", // из
+        authDomain: "quasap-a072e.firebaseapp.com",
+        projectId: "quasap-a072e",
+        storageBucket: "quasap-a072e.firebasestorage.app",
+        messagingSenderId: "470254888898",
+        appId: "1:306369715709:web:ab603b33863c22f3f0cd94" // Твой последний ID
+    };
 
-// МЕТОД: Загрузка чата между двумя пользователями
-const loadChat = () => {
-    // Запрос сообщений, где либо я отправитель, либо я получатель
-    const q = query(
-        collection(db, "direct_messages"),
-        orderBy("timestamp", "asc")
-    );
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
+    // Данные пользователей для DM
+    const MY_NAME = "Дүйсенбек Алмас";
+    const TARGET_NAME = "Алмас";
+
+    // ОТПРАВКА
+    document.getElementById('sendBtn').onclick = async () => {
+        const input = document.getElementById('messageInput');
+        if (!input.value.trim()) return;
+
+        try {
+            await addDoc(collection(db, "direct_messages"), {
+                from: MY_NAME,
+                to: TARGET_NAME,
+                text: input.value,
+                timestamp: serverTimestamp()
+            });
+            input.value = "";
+        } catch (e) { alert("Ошибка: " + e.message); }
+    };
+
+    // ЧТЕНИЕ (REAL-TIME)
+    const q = query(collection(db, "direct_messages"), orderBy("timestamp", "asc"));
     onSnapshot(q, (snapshot) => {
         const chatBox = document.getElementById('chatBox');
         chatBox.innerHTML = "";
         snapshot.forEach((doc) => {
-            const m = doc.data();
-            // Фильтр на стороне клиента для простоты (в идеале — composite query в Firebase)
-            if ((m.from === currentUser && m.to === selectedChat) || 
-                (m.from === selectedChat && m.to === currentUser)) {
+            const data = doc.data();
+            // Фильтр: показываем только сообщения между мной и собеседником
+            if ((data.from === MY_NAME && data.to === TARGET_NAME) || 
+                (data.from === TARGET_NAME && data.to === MY_NAME)) {
                 
-                const isMine = m.from === currentUser;
+                const isMine = data.from === MY_NAME;
+                const time = data.timestamp?.toDate().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) || '...';
+                
                 chatBox.innerHTML += `
                     <div class="msg ${isMine ? 'sent' : 'received'}">
-                        <p>${m.text}</p>
-                        <span class="time">${m.timestamp?.toDate().toLocaleTimeString() || '...'}</span>
+                        ${data.text}
+                        <span class="time">${time}</span>
                     </div>
                 `;
             }
         });
+        chatBox.scrollTop = chatBox.scrollHeight; // Автопрокрутка вниз
     });
-};
+</script>
+</body>
+</html>
